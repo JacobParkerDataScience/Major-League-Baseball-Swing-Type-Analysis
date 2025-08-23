@@ -1,0 +1,53 @@
+---
+title: "best_fit_players"
+output: html_document
+date: "2025-07-19"
+---
+```{r}
+library(dplyr)
+```
+
+
+```{r}
+data <- read.csv("data_with_clusters.csv")
+
+df <- subset(data, select = -c(id, name, side, competitive_swings, EV, LA, barrel_per, hardhit_per, z_contact_per, wOBA, avg_bat_speed,pull_air_rate))
+```
+
+```{r}
+df$cluster <- as.factor(df$cluster)
+
+numeric_vars <- df %>%
+  select(where(is.numeric)) %>%
+  select(-any_of("cluster")) %>%
+  names()
+
+cluster_means <- df %>%
+  group_by(cluster) %>%
+  summarise(across(all_of(numeric_vars), mean, na.rm = TRUE)) %>%
+  ungroup()
+
+representatives <- list()
+
+for (cl in levels(df$cluster)) {
+  cluster_data <- df %>% filter(cluster == cl)
+  
+  mean_vec <- cluster_means %>%
+    filter(cluster == cl) %>%
+    select(all_of(numeric_vars)) %>%
+    as.numeric()
+  
+  distances <- apply(cluster_data[, numeric_vars], 1, function(row) {
+    sqrt(sum((row - mean_vec)^2))
+  })
+  
+  min_index <- which.min(distances)
+  
+  representatives[[cl]] <- cluster_data[min_index, ]
+}
+
+representative_points <- do.call(rbind, representatives)
+
+print(representative_points)
+```
+

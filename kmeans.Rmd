@@ -1,0 +1,125 @@
+---
+title: "bat_tracking_main"
+output: html_document
+date: "2025-07-19"
+---
+
+```{r}
+library(factoextra)
+library(cluster)
+library(ggplot2)
+library(dplyr)
+library(car)
+```
+Load in Data
+
+Drop unnecessary columns (id, name, side)
+
+scale data
+
+```{r}
+data <- read.csv("original_data.csv")
+
+head(data)
+```
+
+
+```{r}
+df <- data
+cols <- c("swing_tilt", "attack_angle", "attack_direction", "ideal_attack_angle_rate",
+          "avg_intercept_y_vs_plate", "avg_intercept_y_vs_batter", "avg_batter_x_position", 
+          "swing_length", "wOBA")
+
+missing_cols <- setdiff(cols, names(df))
+if (length(missing_cols) > 0) {
+  stop(paste("These columns are missing from df:", paste(missing_cols, collapse = ", ")))
+}
+
+df_subset <- as.data.frame(df[, cols])
+
+vif_model <- lm(wOBA ~ ., data = df_subset)
+
+vif_scores <- vif(vif_model)
+print(vif_scores)
+
+vif_threshold <- 5
+high_vif <- vif_scores[vif_scores > vif_threshold]
+cat("\nVariables with VIF >", vif_threshold, ":\n")
+print(high_vif)
+```
+
+
+```{r}
+df <- subset(df, select = -c(id, name, side, competitive_swings, EV, LA, barrel_per, hardhit_per, z_contact_per, wOBA, avg_bat_speed,pull_air_rate))
+
+df <- scale(df)
+head(df)
+```
+
+
+Elbow Plot
+
+k=3 or 4
+```{r}
+fviz_nbclust(df, kmeans, method = "wss")
+```
+Gap stat says k=1, but not ideal. We will go with k=3
+```{r}
+gap_stat <- clusGap(df,
+                    FUN = kmeans,
+                    nstart = 25,
+                    K.max = 10,
+                    B = 100)
+
+fviz_gap_stat(gap_stat)
+```
+
+```{r}
+pca_result <- prcomp(df, scale. = TRUE)
+summary(pca_result)
+```
+
+```{r}
+fviz_eig(pca_result, addlabels = TRUE, barfill = "steelblue")
+```
+
+```{r}
+for (n_pc in 2:8) {
+  reduced_data <- pca_result$x[, 1:n_pc]
+  km <- kmeans(reduced_data, centers = 3)
+  sil <- silhouette(km$cluster, dist(reduced_data))
+  cat("PCs:", n_pc, "- Silhouette Score:", round(mean(sil[, 3]), 3), "\n")
+}
+```
+
+
+```{r}
+pca_result <- prcomp(df, scale. = TRUE)
+
+pc_data <- pca_result$x[, 1:2]
+
+set.seed(42)
+km_pca2 <- kmeans(pc_data, centers = 3)
+
+df_plot <- data.frame(PC1 = pc_data[, 1],
+                      PC2 = pc_data[, 2],
+                      Cluster = factor(km_pca2$cluster))
+
+ggplot(df_plot, aes(x = PC1, y = PC2, color = Cluster)) +
+  geom_point(size = 2) +
+  theme_minimal() +
+  labs(title = "K-means Clustering on First 2 Principal Components",
+       x = "PC1", y = "PC2")
+
+sil <- silhouette(km_pca2$cluster, dist(pc_data))
+cat("Silhouette Score:", round(mean(sil[, 3]), 3), "\n")
+```
+
+```{r}
+data$Cluster <- factor(km_pca2$cluster)
+
+write.csv(data, "data_with_clusters.csv", row.names = FALSE)
+
+```
+
+

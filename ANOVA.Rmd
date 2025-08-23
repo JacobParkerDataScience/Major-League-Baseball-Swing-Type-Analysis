@@ -1,0 +1,110 @@
+---
+title: "kmeans ANOVA"
+output: html_document
+date: "2025-07-19"
+---
+
+```{r}
+library(stats)
+library(dplyr)
+library(gridExtra)
+library(grid)
+library(writexl)
+```
+
+```{r}
+library(dplyr)
+
+data_means <- data %>%
+  summarise(across(where(is.numeric), ~ mean(.x, na.rm = TRUE)))
+
+print(data_means)
+```
+
+```{r}
+data <- read.csv("data_with_clusters.csv")
+
+df <- subset(data, select = -c(id, name, side, competitive_swings))
+
+df$cluster <- as.factor(df$cluster)
+numeric_vars <- names(df)[sapply(df, is.numeric) & names(df) != "cluster"]
+
+anova_results <- lapply(numeric_vars, function(var) {
+  formula <- as.formula(paste(var, "~ cluster"))
+  model <- aov(formula, data = df)
+  p_value <- summary(model)[[1]][["Pr(>F)"]][1]
+  data.frame(Variable = var, P_Value = p_value)
+})
+
+anova_df <- do.call(rbind, anova_results)
+
+anova_df$P_Adjusted <- p.adjust(anova_df$P_Value, method = "fdr")
+
+anova_df <- anova_df[order(anova_df$P_Adjusted), ]
+
+write_xlsx(anova_df, path = "anova_results.xlsx")
+
+```
+
+```{r}
+significant_vars <- c(
+  "barrel_per", "hardhit_per", "EV", "avg_bat_speed", "pull_air_rate", "LA",
+  "attack_angle", "attack_direction", "avg_intercept_y_vs_batter",
+  "z_contact_per", "swing_length", "ideal_attack_angle_rate",
+  "avg_intercept_y_vs_plate", "avg_batter_x_position", "swing_tilt", "wOBA"
+)
+
+
+tukey_all_results <- list()
+
+for (var in significant_vars) {
+  
+  formula <- as.formula(paste(var, "~ cluster"))
+  model <- aov(formula, data = df)
+  tukey <- TukeyHSD(model)
+  
+  tukey_df <- as.data.frame(tukey$cluster)
+  tukey_df$Comparison <- rownames(tukey_df)
+  
+  tukey_df$Variable <- var
+  
+  tukey_df <- tukey_df[, c("Variable", "Comparison", "diff", "lwr", "upr", "p adj")]
+  colnames(tukey_df) <- c("Variable", "Comparison", "Difference", "Lower_CI", "Upper_CI", "Adjusted_P")
+  
+  tukey_all_results[[var]] <- tukey_df
+}
+
+final_tukey_df <- do.call(rbind, tukey_all_results)
+
+write_xlsx(final_tukey_df, path = "tukey_hsd_results.xlsx")
+```
+
+```{r}
+library(writexl)
+
+tukey_summary_list <- list()
+
+for (var in significant_vars) {
+  model <- aov(as.formula(paste(var, "~ cluster")), data = df)
+  tukey <- TukeyHSD(model)$cluster
+  
+  result <- data.frame(
+    Variable = var,
+    Comparison = rownames(tukey),
+    P_Adj = tukey[, "p adj"],
+    Significant = tukey[, "p adj"] < 0.05
+  )
+  
+  tukey_summary_list[[var]] <- result
+}
+
+
+tukey_summary_df <- do.call(rbind, tukey_summary_list)
+rownames(tukey_summary_df) <- NULL
+
+write_xlsx(tukey_summary_df, path = "tukey_hsd_results.xlsx")
+
+```
+
+
+

@@ -1,0 +1,468 @@
+---
+title: "ClusterRelations"
+output: html_document
+date: "2025-07-19"
+---
+```{r}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(readr)
+library(RColorBrewer)
+library(corrplot)
+library(ggcorrplot)
+
+```
+
+```{r}
+data <- read.csv("data_with_clusters.csv")
+
+df <- subset(data, select = -c(id, name, side, competitive_swings))
+
+table(df$cluster)
+
+df$cluster <- as.factor(df$cluster)
+```
+
+Histograms of each variable by cluster:
+```{r}
+df$cluster <- as.factor(df$cluster)
+
+numeric_vars <- df %>%
+  select(where(is.numeric)) %>%
+  select(-wOBA) %>%
+  names()
+
+for (var in numeric_vars) {
+  cat("Plotting:", var, "\n") 
+  
+  print(
+    ggplot(df, aes(x = .data[[var]], fill = cluster)) +
+      geom_histogram(position = "identity", alpha = 0.6, bins = 30) +
+      facet_wrap(~ cluster, scales = "free") +
+      theme_minimal() +
+      labs(
+        title = paste("Histogram of", var, "by Cluster"),
+        x = var,
+        y = "Count"
+      )
+  )
+}
+```
+
+Box plots of each variable by cluster:
+```{r}
+
+if (!"cluster" %in% names(df)) {
+  stop("Column 'cluster' not found in df")
+}
+df$cluster <- as.factor(df$cluster)
+
+if (!"wOBA" %in% names(df)) {
+  stop("Column 'wOBA' not found in df")
+}
+
+numeric_vars <- df %>%
+  select(where(is.numeric)) %>%
+  select(-any_of(c("wOBA", "cluster"))) %>%
+  names()
+
+if (length(numeric_vars) == 0) {
+  stop("No numeric variables found (excluding wOBA and cluster)")
+}
+
+for (var in numeric_vars) {
+  cat("Plotting:", var, "\n")
+  
+  p <- ggplot(df, aes(x = cluster, y = .data[[var]], fill = cluster)) +
+    geom_boxplot(alpha = 0.7, outlier.shape = NA) +
+    theme_minimal() +
+    labs(
+      title = paste("Box Plot of", var, "by Cluster"),
+      x = "Cluster",
+      y = var
+    ) +
+    theme(legend.position = "none")
+  
+  print(p)
+}
+```
+```{r}
+cols <- c("swing_tilt", "attack_angle", "attack_direction", "ideal_attack_angle_rate",
+          "avg_intercept_y_vs_plate", "avg_intercept_y_vs_batter", "avg_batter_x_position", 
+          "swing_length", "wOBA")
+
+# Subset data
+df_subset <- df[ , cols]
+
+cor_matrix <- cor(df_subset, use = "complete.obs")
+
+corrplot(cor_matrix, 
+         method = "color", 
+         type = "upper", 
+         addCoef.col = "black",   
+         tl.col = "black",       
+         tl.cex = 0.8, 
+         number.cex = 0.7,
+         col = colorRampPalette(c("blue", "white", "red"))(200),
+         cl.lim = c(-1, 1),
+         diag = FALSE)            
+
+
+ggcorrplot(cor_matrix, method = "circle", lab = TRUE, lab_size = 3,
+           colors = c("red", "white", "blue"), 
+           title = "Correlation Matrix", ggtheme = theme_minimal())
+
+png("ingredients_correlation_plot.png", width = 1200, height = 1000, res = 150)
+
+corrplot(cor_matrix,
+         method = "color",
+         type = "upper",
+         addCoef.col = "black",
+         number.cex = 0.9,
+         tl.cex = 1.1,
+         tl.col = "black",
+         col = colorRampPalette(c("#CCE5FF", "white", "#FFCCCC"))(200),  # Pale blue / pale red
+         cl.lim = c(-1, 1),
+         insig = "blank",
+         diag = FALSE)
+        
+
+dev.off()
+
+```
+
+
+```{r}
+library(corrplot)
+
+cols <- c("swing_tilt", "attack_angle", "attack_direction", "ideal_attack_angle_rate",
+          "avg_intercept_y_vs_plate", "avg_intercept_y_vs_batter", "avg_batter_x_position", 
+          "swing_length", "wOBA")
+
+for (cluster_id in c(1, 2, 3)) {
+  
+  cluster_data <- df[df$cluster == cluster_id, cols]
+  
+  cor_matrix <- cor(cluster_data, use = "complete.obs")
+  
+  png_filename <- paste0("correlation_cluster_", cluster_id, ".png")
+  png(png_filename, width = 1200, height = 1000, res = 150)
+
+  corrplot(cor_matrix, 
+           method = "color", 
+           type = "upper", 
+           addCoef.col = "black",      # Show correlation coefficients
+           number.cex = 0.9,           # Size of correlation values
+           tl.cex = 1.1,               # Size of axis labels
+           tl.col = "red",             # Axis label color
+           col = colorRampPalette(c("red", "white", "blue"))(200))
+  
+  # Add visible title
+  title(main = paste("Cluster", cluster_id), cex.main = 1.5)
+
+  dev.off()
+}
+
+```
+
+```{r}
+if (!is.numeric(df$wOBA)) {
+  stop("wOBA is not numeric.")
+}
+
+numeric_vars <- df %>%
+  select(where(is.numeric)) %>%
+  select(-any_of(c("wOBA", "cluster"))) %>%
+  names()
+
+cor_results <- sapply(numeric_vars, function(var) {
+  cor(df$wOBA, df[[var]], use = "complete.obs")
+})
+
+cor_df <- data.frame(
+  variable = names(cor_results),
+  correlation_with_wOBA = cor_results
+) %>%
+  arrange(desc(abs(correlation_with_wOBA)))
+
+print(cor_df)
+```
+```{r}
+library(dplyr)
+
+df$cluster <- as.factor(df$cluster)
+
+numeric_vars <- df %>%
+  select(where(is.numeric)) %>%
+  select(-any_of(c("wOBA", "cluster"))) %>%
+  names()
+
+cor_by_cluster <- list()
+
+for (cl in levels(df$cluster)) {
+  cluster_data <- df %>% filter(cluster == cl)
+  
+  cors <- sapply(numeric_vars, function(var) {
+    cor(cluster_data$wOBA, cluster_data[[var]], use = "complete.obs")
+  })
+  
+  cor_by_cluster[[cl]] <- data.frame(
+    variable = numeric_vars,
+    correlation_with_wOBA = cors,
+    cluster = cl
+  )
+}
+
+cor_cluster_df <- do.call(rbind, cor_by_cluster)
+
+print(cor_cluster_df)
+
+```
+```{r}
+df$cluster <- as.factor(df$cluster)
+
+numeric_vars <- df %>%
+  select(where(is.numeric)) %>%
+  select(-any_of(c("hardhit_per", "cluster"))) %>%
+  names()
+
+cor_by_cluster <- list()
+
+for (cl in levels(df$cluster)) {
+  cluster_data <- df %>% filter(cluster == cl)
+  
+  cors <- sapply(numeric_vars, function(var) {
+    cor(cluster_data$hardhit_per, cluster_data[[var]], use = "complete.obs")
+  })
+  
+  # Store results
+  cor_by_cluster[[cl]] <- data.frame(
+    variable = numeric_vars,
+    correlation_with_hardhit_per = cors,
+    cluster = cl
+  )
+}
+
+cor_cluster_df <- do.call(rbind, cor_by_cluster)
+
+print(cor_cluster_df)
+
+```
+```{r}
+df$cluster <- as.factor(df$cluster)
+
+numeric_vars <- df %>%
+  select(where(is.numeric)) %>%
+  select(-any_of(c("barrel_per", "cluster"))) %>%
+  names()
+
+cor_by_cluster <- list()
+
+for (cl in levels(df$cluster)) {
+  cluster_data <- df %>% filter(cluster == cl)
+  
+  cors <- sapply(numeric_vars, function(var) {
+    cor(cluster_data$barrel_per, cluster_data[[var]], use = "complete.obs")
+  })
+  
+  cor_by_cluster[[cl]] <- data.frame(
+    variable = numeric_vars,
+    correlation_with_barrel_per = cors,
+    cluster = cl
+  )
+}
+
+cor_cluster_df <- do.call(rbind, cor_by_cluster)
+
+# View the result
+print(cor_cluster_df)
+
+```
+
+At alpha = 0.05, bat speed is significantly more correlated with wOBA in cluster 2 compared to clusters 1 and 3.
+
+```{r}
+df$cluster <- as.factor(df$cluster)
+
+cluster_r <- df %>%
+  group_by(cluster) %>%
+  summarise(r = cor(avg_bat_speed, wOBA, use = "complete.obs")) %>%
+  mutate(label = paste0("Cluster ", cluster, " (r = ", round(r, 2), ")"))
+
+r_total <- cor(df$avg_bat_speed, df$wOBA, use = "complete.obs")
+population_label <- paste0("Population (r = ", round(r_total, 2), ")")
+
+df <- df %>%
+  left_join(cluster_r, by = "cluster")
+
+cluster_labels <- unique(cluster_r$label)
+all_labels <- c(cluster_labels, population_label)
+colors <- c(brewer.pal(n = length(cluster_labels), name = "Dark2"), "black")
+names(colors) <- all_labels
+
+ggplot(df, aes(x = avg_bat_speed, y = wOBA)) +
+  geom_point(aes(color = label), alpha = 0.6, size = 2) +
+  
+  geom_smooth(aes(color = label), method = "lm", se = FALSE, linewidth = 1.2) +
+  
+  geom_smooth(
+    data = df, 
+    aes(x = avg_bat_speed, y = wOBA, color = population_label),
+    method = "lm", se = FALSE, linetype = "dashed", linewidth = 1.2
+  ) +
+
+  scale_color_manual(values = colors) +
+  labs(
+  title = "Bat Speed vs wOBA by Cluster (with Overall Trend)",
+  x = "Average Bat Speed (mph)",
+  y = "wOBA",
+  color = "Legend",
+) +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    legend.position = "right",
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10)
+  )
+
+
+ggsave("bat_speed_vs_wOBA_by_cluster.png", width = 8, height = 6, dpi = 300)
+```
+
+```{r}
+cols <- c("attack_angle", "barrel_per", "hardhit_per", "LA", "EV", 
+"pull_air_rate", "z_contact_per", "wOBA")
+
+# Subset data
+df_subset <- df[ , cols]
+
+# Compute correlation matrix
+cor_matrix <- cor(df_subset, use = "complete.obs")
+
+# Plot correlation matrix with values
+corrplot(cor_matrix, 
+         method = "color", 
+         type = "upper", 
+         addCoef.col = "black",   # Coefficient text in black
+         tl.col = "black",        # Variable labels in black
+         tl.cex = 0.8, 
+         number.cex = 0.7,
+         col = colorRampPalette(c("blue", "white", "red"))(200),
+         cl.lim = c(-1, 1),
+         diag = FALSE)            # Remove 1.0 diagonal
+
+
+ggcorrplot(cor_matrix, method = "circle", lab = TRUE, lab_size = 3,
+           colors = c("red", "white", "blue"), 
+           title = "Correlation Matrix", ggtheme = theme_minimal())
+
+png("attack_angle_correlation_plot.png", width = 1200, height = 1000, res = 150)
+
+# Plot with larger text
+corrplot(cor_matrix,
+         method = "color",
+         type = "upper",
+         addCoef.col = "black",
+         number.cex = 0.9,
+         tl.cex = 1.1,
+         tl.col = "black",
+         col = colorRampPalette(c("#CCE5FF", "white", "#FFCCCC"))(200),  # Pale blue / pale red
+         cl.lim = c(-1, 1),
+         insig = "blank",
+         diag = FALSE)
+        
+
+# Close the file
+dev.off()
+```
+```{r}
+cols <- c("avg_intercept_y_vs_batter", "barrel_per", "hardhit_per", "LA", "EV", 
+"pull_air_rate", "z_contact_per", "wOBA")
+
+df_subset <- df[ , cols]
+
+cor_matrix <- cor(df_subset, use = "complete.obs")
+
+corrplot(cor_matrix, 
+         method = "color", 
+         type = "upper", 
+         addCoef.col = "black",   # Coefficient text in black
+         tl.col = "black",        # Variable labels in black
+         tl.cex = 0.8, 
+         number.cex = 0.7,
+         col = colorRampPalette(c("blue", "white", "red"))(200),
+         cl.lim = c(-1, 1),
+         diag = FALSE)            # Remove 1.0 diagonal
+
+
+ggcorrplot(cor_matrix, method = "circle", lab = TRUE, lab_size = 3,
+           colors = c("red", "white", "blue"), 
+           title = "Correlation Matrix", ggtheme = theme_minimal())
+
+png("yint_batter_correlation_plot.png", width = 1200, height = 1000, res = 150)
+
+corrplot(cor_matrix,
+         method = "color",
+         type = "upper",
+         addCoef.col = "black",
+         number.cex = 0.9,
+         tl.cex = 1.1,
+         tl.col = "black",
+         col = colorRampPalette(c("#CCE5FF", "white", "#FFCCCC"))(200),  # Pale blue / pale red
+         cl.lim = c(-1, 1),
+         insig = "blank",
+         diag = FALSE)
+        
+
+dev.off()
+```
+```{r}
+cols <- c("swing_length", "barrel_per", "hardhit_per", "LA", "EV", 
+"pull_air_rate", "z_contact_per", "wOBA")
+
+# Subset data
+df_subset <- df[ , cols]
+
+# Compute correlation matrix
+cor_matrix <- cor(df_subset, use = "complete.obs")
+
+# Plot correlation matrix with values
+corrplot(cor_matrix, 
+         method = "color", 
+         type = "upper", 
+         addCoef.col = "black",   # Coefficient text in black
+         tl.col = "black",        # Variable labels in black
+         tl.cex = 0.8, 
+         number.cex = 0.7,
+         col = colorRampPalette(c("blue", "white", "red"))(200),
+         cl.lim = c(-1, 1),
+         diag = FALSE)            # Remove 1.0 diagonal
+
+
+ggcorrplot(cor_matrix, method = "circle", lab = TRUE, lab_size = 3,
+           colors = c("red", "white", "blue"), 
+           title = "Correlation Matrix", ggtheme = theme_minimal())
+
+png("swing_length_correlation_plot.png", width = 1200, height = 1000, res = 150)
+
+# Plot with larger text
+corrplot(cor_matrix,
+         method = "color",
+         type = "upper",
+         addCoef.col = "black",
+         number.cex = 0.9,
+         tl.cex = 1.1,
+         tl.col = "black",
+         col = colorRampPalette(c("#CCE5FF", "white", "#FFCCCC"))(200),  # Pale blue / pale red
+         cl.lim = c(-1, 1),
+         insig = "blank",
+         diag = FALSE)
+        
+
+# Close the file
+dev.off()
+```
+
+
