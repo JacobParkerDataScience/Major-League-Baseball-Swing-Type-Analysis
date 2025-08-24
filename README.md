@@ -89,12 +89,7 @@ The goal is to investigate how swing mechanics relate to offensive performance, 
 - `data/` → Collected datasets  
 - `notebooks/` → R scripts for clustering & analysis.  
 - `presentation/` → Final project slides.  
-- `README.md` → Project summary (this file).  
-
----
-
-## 📑 Presentation
-👉 [Download Final Presentation (PPTX)](Final%20Presentation.pptx)  
+- `README.md` → Project summary (this file).   
 
 ---
 
