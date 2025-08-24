@@ -92,7 +92,6 @@ cols <- c("swing_tilt", "attack_angle", "attack_direction", "ideal_attack_angle_
           "avg_intercept_y_vs_plate", "avg_intercept_y_vs_batter", "avg_batter_x_position", 
           "swing_length", "wOBA")
 
-# Subset data
 df_subset <- df[ , cols]
 
 cor_matrix <- cor(df_subset, use = "complete.obs")
@@ -122,7 +121,7 @@ corrplot(cor_matrix,
          number.cex = 0.9,
          tl.cex = 1.1,
          tl.col = "black",
-         col = colorRampPalette(c("#CCE5FF", "white", "#FFCCCC"))(200),  # Pale blue / pale red
+         col = colorRampPalette(c("#CCE5FF", "white", "#FFCCCC"))(200),  
          cl.lim = c(-1, 1),
          insig = "blank",
          diag = FALSE)
@@ -152,13 +151,12 @@ for (cluster_id in c(1, 2, 3)) {
   corrplot(cor_matrix, 
            method = "color", 
            type = "upper", 
-           addCoef.col = "black",      # Show correlation coefficients
-           number.cex = 0.9,           # Size of correlation values
-           tl.cex = 1.1,               # Size of axis labels
-           tl.col = "red",             # Axis label color
+           addCoef.col = "black",     
+           number.cex = 0.9,           
+           tl.cex = 1.1,               
+           tl.col = "red",             
            col = colorRampPalette(c("red", "white", "blue"))(200))
   
-  # Add visible title
   title(main = paste("Cluster", cluster_id), cex.main = 1.5)
 
   dev.off()
@@ -236,7 +234,6 @@ for (cl in levels(df$cluster)) {
     cor(cluster_data$hardhit_per, cluster_data[[var]], use = "complete.obs")
   })
   
-  # Store results
   cor_by_cluster[[cl]] <- data.frame(
     variable = numeric_vars,
     correlation_with_hardhit_per = cors,
@@ -275,7 +272,6 @@ for (cl in levels(df$cluster)) {
 
 cor_cluster_df <- do.call(rbind, cor_by_cluster)
 
-# View the result
 print(cor_cluster_df)
 
 ```
@@ -335,23 +331,20 @@ ggsave("bat_speed_vs_wOBA_by_cluster.png", width = 8, height = 6, dpi = 300)
 cols <- c("attack_angle", "barrel_per", "hardhit_per", "LA", "EV", 
 "pull_air_rate", "z_contact_per", "wOBA")
 
-# Subset data
 df_subset <- df[ , cols]
 
-# Compute correlation matrix
 cor_matrix <- cor(df_subset, use = "complete.obs")
 
-# Plot correlation matrix with values
 corrplot(cor_matrix, 
          method = "color", 
          type = "upper", 
-         addCoef.col = "black",   # Coefficient text in black
-         tl.col = "black",        # Variable labels in black
+         addCoef.col = "black",   
+         tl.col = "black",        
          tl.cex = 0.8, 
          number.cex = 0.7,
          col = colorRampPalette(c("blue", "white", "red"))(200),
          cl.lim = c(-1, 1),
-         diag = FALSE)            # Remove 1.0 diagonal
+         diag = FALSE)          
 
 
 ggcorrplot(cor_matrix, method = "circle", lab = TRUE, lab_size = 3,
@@ -360,7 +353,6 @@ ggcorrplot(cor_matrix, method = "circle", lab = TRUE, lab_size = 3,
 
 png("attack_angle_correlation_plot.png", width = 1200, height = 1000, res = 150)
 
-# Plot with larger text
 corrplot(cor_matrix,
          method = "color",
          type = "upper",
@@ -368,13 +360,12 @@ corrplot(cor_matrix,
          number.cex = 0.9,
          tl.cex = 1.1,
          tl.col = "black",
-         col = colorRampPalette(c("#CCE5FF", "white", "#FFCCCC"))(200),  # Pale blue / pale red
+         col = colorRampPalette(c("#CCE5FF", "white", "#FFCCCC"))(200), 
          cl.lim = c(-1, 1),
          insig = "blank",
          diag = FALSE)
         
 
-# Close the file
 dev.off()
 ```
 ```{r}
@@ -388,13 +379,13 @@ cor_matrix <- cor(df_subset, use = "complete.obs")
 corrplot(cor_matrix, 
          method = "color", 
          type = "upper", 
-         addCoef.col = "black",   # Coefficient text in black
-         tl.col = "black",        # Variable labels in black
+         addCoef.col = "black",   
+         tl.col = "black",        
          tl.cex = 0.8, 
          number.cex = 0.7,
          col = colorRampPalette(c("blue", "white", "red"))(200),
          cl.lim = c(-1, 1),
-         diag = FALSE)            # Remove 1.0 diagonal
+         diag = FALSE)            
 
 
 ggcorrplot(cor_matrix, method = "circle", lab = TRUE, lab_size = 3,
@@ -410,7 +401,7 @@ corrplot(cor_matrix,
          number.cex = 0.9,
          tl.cex = 1.1,
          tl.col = "black",
-         col = colorRampPalette(c("#CCE5FF", "white", "#FFCCCC"))(200),  # Pale blue / pale red
+         col = colorRampPalette(c("#CCE5FF", "white", "#FFCCCC"))(200), 
          cl.lim = c(-1, 1),
          insig = "blank",
          diag = FALSE)
@@ -422,23 +413,20 @@ dev.off()
 cols <- c("swing_length", "barrel_per", "hardhit_per", "LA", "EV", 
 "pull_air_rate", "z_contact_per", "wOBA")
 
-# Subset data
 df_subset <- df[ , cols]
 
-# Compute correlation matrix
 cor_matrix <- cor(df_subset, use = "complete.obs")
 
-# Plot correlation matrix with values
 corrplot(cor_matrix, 
          method = "color", 
          type = "upper", 
-         addCoef.col = "black",   # Coefficient text in black
-         tl.col = "black",        # Variable labels in black
+         addCoef.col = "black",  
+         tl.col = "black",        
          tl.cex = 0.8, 
          number.cex = 0.7,
          col = colorRampPalette(c("blue", "white", "red"))(200),
          cl.lim = c(-1, 1),
-         diag = FALSE)            # Remove 1.0 diagonal
+         diag = FALSE)            
 
 
 ggcorrplot(cor_matrix, method = "circle", lab = TRUE, lab_size = 3,
@@ -447,7 +435,7 @@ ggcorrplot(cor_matrix, method = "circle", lab = TRUE, lab_size = 3,
 
 png("swing_length_correlation_plot.png", width = 1200, height = 1000, res = 150)
 
-# Plot with larger text
+
 corrplot(cor_matrix,
          method = "color",
          type = "upper",
@@ -455,13 +443,13 @@ corrplot(cor_matrix,
          number.cex = 0.9,
          tl.cex = 1.1,
          tl.col = "black",
-         col = colorRampPalette(c("#CCE5FF", "white", "#FFCCCC"))(200),  # Pale blue / pale red
+         col = colorRampPalette(c("#CCE5FF", "white", "#FFCCCC"))(200),  
          cl.lim = c(-1, 1),
          insig = "blank",
          diag = FALSE)
         
 
-# Close the file
+
 dev.off()
 ```
 
