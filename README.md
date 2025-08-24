@@ -86,8 +86,8 @@ The goal is to investigate how swing mechanics relate to offensive performance, 
 ---
 
 ## 📂 Repository Structure
-- `data/` → Collected datasets (if shareable).  
-- `notebooks/` → R scripts / Jupyter notebooks for clustering & analysis.  
+- `data/` → Collected datasets  
+- `notebooks/` → R scripts for clustering & analysis.  
 - `presentation/` → Final project slides.  
 - `README.md` → Project summary (this file).  
 
