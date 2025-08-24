@@ -11,12 +11,6 @@ library(ggplot2)
 library(dplyr)
 library(car)
 ```
-Load in Data
-
-Drop unnecessary columns (id, name, side)
-
-scale data
-
 ```{r}
 data <- read.csv("original_data.csv")
 
